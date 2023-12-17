@@ -10,11 +10,13 @@ enum CacheLineState {
 
 // 定义主存类
 class MainMemory {
+    public final int size;
     private final String[] data;
 
     public MainMemory(int size) {
+        this.size = size;
         data = new String[size];
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < size; i++) {
             data[i] = String.valueOf(i);
         }
     }
@@ -35,22 +37,24 @@ class Processor {
     private final String[] cacheData;           // 每个缓存行的数据
     private final int[] cacheAddress;           // 用于存储每个缓存行中的主存地址
     private final MainMemory mainMemory;
+    private final int cacheNum;
 
-    public Processor(String id, MainMemory mainMemory) {
+    public Processor(String id, MainMemory mainMemory, int cacheNum) {
         this.id = id;
-        this.cacheStates = new CacheLineState[4]; // 每个处理器有4个缓存行
-        this.cacheData = new String[4];            // 数据缓存
-        this.cacheAddress = new int[4];
-        for (int i = 0; i < 4; i++) {
+        this.cacheNum = cacheNum;
+        this.cacheStates = new CacheLineState[this.cacheNum]; // 每个处理器有4个缓存行
+        this.cacheData = new String[this.cacheNum];            // 数据缓存
+        this.cacheAddress = new int[this.cacheNum];
+        this.mainMemory = mainMemory;
+        for (int i = 0; i < this.cacheNum; i++) {
             cacheStates[i] = CacheLineState.INVALID;
             cacheData[i] = "";
-            cacheAddress[i] = 32;
+            cacheAddress[i] = mainMemory.size;
         }
-        this.mainMemory = mainMemory;
     }
 
     public String readData(int address) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (checkCache(address)) {
             System.out.println("处理器:" + id + " 读:" + address + "  cache命中");
         } else {
@@ -62,7 +66,7 @@ class Processor {
     }
 
     public void writeData(int address, String newData) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (checkCache(address)) {
             System.out.println("处理器:" + id + " 写:" + address + " cache命中");
             checkOtherProcessorsCache(address);
@@ -75,7 +79,7 @@ class Processor {
     }
 
     private void checkOtherProcessorsCache(int address) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         for (Processor p : MultiProcessor.processors) {
             if (!this.equals(p)) {
                 if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
@@ -91,18 +95,18 @@ class Processor {
     }
 
     private void writeBack(int address) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         System.out.println("处理器:" + id + " 写回主存:" + address);
         mainMemory.writeData(address, cacheData[cacheIndex]);
     }
 
     public void updateCache(int address, String newData, CacheLineState newState) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (newState == CacheLineState.INVALID) {
             System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
             cacheData[cacheIndex] = "";
             cacheStates[cacheIndex] = CacheLineState.INVALID;
-            cacheAddress[cacheIndex] = 32;
+            cacheAddress[cacheIndex] = mainMemory.size;
             return;
         }
         System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
@@ -112,7 +116,7 @@ class Processor {
     }
 
     public boolean checkCache(int address) {
-        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         // 处理缓存命中的逻辑
         return cacheAddress[cacheIndex] == address;
     }
@@ -127,11 +131,12 @@ public class MultiProcessor {
     static Set<Processor> processors = new HashSet<>();
 
     static {
+        int cacheNum = 4;
         mainMemory = new MainMemory(32);
-        p1 = new Processor("A", mainMemory);
-        p2 = new Processor("B", mainMemory);
-        p3 = new Processor("C", mainMemory);
-        p4 = new Processor("D", mainMemory);
+        p1 = new Processor("A", mainMemory, cacheNum);
+        p2 = new Processor("B", mainMemory, cacheNum);
+        p3 = new Processor("C", mainMemory, cacheNum);
+        p4 = new Processor("D", mainMemory, cacheNum);
         processors.add(p1);
         processors.add(p2);
         processors.add(p3);
