@@ -1,9 +1,11 @@
+import java.util.HashSet;
+import java.util.Set;
+
 // 定义缓存行的状态
 enum CacheLineState {
     INVALID, // 失效
     SHARED,  // 共享
-    EXCLUSIVE, // 独占
-    MODIFIED //修改
+    EXCLUSIVE // 独占
 }
 
 // 定义主存类
@@ -62,9 +64,6 @@ class Processor {
 //            case EXCLUSIVE:
 //                System.out.println("Processor " + id + " reads data from its exclusive cache: " + cacheData[cacheIndex]);
 //                break;
-//            case MODIFIED:
-//                System.out.println("Processor " + id + " reads data from its modified cache: " + cacheData[cacheIndex]);
-//                break;
 //        }
         return cacheData[cacheIndex];
     }
@@ -88,10 +87,6 @@ class Processor {
 //                System.out.println("Processor " + id + " writes data to its exclusive cache: " + newData);
 //                cacheData[cacheIndex] = newData;
 //                break;
-//            case MODIFIED:
-//                System.out.println("Processor " + id + " writes data to its modified cache: " + newData);
-//                cacheData[cacheIndex] = newData;
-//                break;
 //        }
     }
 
@@ -101,27 +96,45 @@ class Processor {
         cacheData[cacheIndex] = newData;
         cacheStates[cacheIndex] = newState;
     }
+    public void checkCache(int address){
+        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        if(cacheAddress[cacheIndex] == address){
+            //todo
+        }
+    }
 }
 
 public class MultiProcessor {
     static MainMemory mainMemory;
-    static Processor processor1;
-    static Processor processor2;
-    static Processor processor3;
-    static Processor processor4;
+    static Processor p1;
+    static Processor p2;
+    static Processor p3;
+    static Processor p4;
+    static Set<Processor> processors = new HashSet<>();
 
+    static void checkOtherProcessors(Processor mp,int address){
+        for(Processor p : processors){
+            if(!mp.equals(p)){
+                p.checkCache(address);
+            }
+        }
+    }
     public static void main(String[] args) {
         mainMemory = new MainMemory(32);
-        processor1 = new Processor(1, mainMemory);
-        processor2 = new Processor(2, mainMemory);
-        processor3 = new Processor(3, mainMemory);
-        processor4 = new Processor(4, mainMemory);
+        p1 = new Processor(1, mainMemory);
+        p2 = new Processor(2, mainMemory);
+        p3 = new Processor(3, mainMemory);
+        p4 = new Processor(4, mainMemory);
+        processors.add(p1);
+        processors.add(p2);
+        processors.add(p2);
+        processors.add(p3);
 
-        processor1.readData(0);
-        processor2.writeData(0, "New Data from Processor 2");
-        processor1.readData(0);
-        processor3.readData(2);
-        processor4.writeData(2, "New Data from Processor 4");
-        processor3.readData(2);
+        p1.readData(0);
+        p2.writeData(0, "New Data from Processor 2");
+        p1.readData(0);
+        p3.readData(2);
+        p4.writeData(2, "New Data from Processor 4");
+        p3.readData(2);
     }
 }
