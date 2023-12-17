@@ -11,20 +11,23 @@ public class Snoop {
 
 	/*********memory的标题*********/
 	static String[] Mem_ca={
-			"Memory","","","Memory","","","Memory","",""
+			"Memory","","","Memory","","","Memory","","","Memory","",""
 	};
 
 	/*********memory中的内容*********/
 	static String[][] Mem_Content ={
-			{"0","","","10","","","20","",""},{"1","","","11","","","21","",""},{"2","","","12","","","22","",""},
-			{"3","","","13","","","23","",""},{"4","","","14","","","24","",""},{"5","","","15","","","25","",""},
-			{"6","","","16","","","26","",""},{"7","","","17","","","27","",""},{"8","","","18","","","28","",""},
-			{"9","","","19","","","29","",""}
+			{"0","","","8","","","16","","","24","",""},
+			{"1","","","9","","","17","","","25","",""},
+			{"2","","","10","","","18","","","26","",""},
+			{"3","","","11","","","19","","","27","",""},
+			{"4","","","12","","","20","","","28","",""},
+			{"5","","","13","","","21","","","29","",""},
+			{"6","","","14","","","22","","","30","",""},
+			{"7","","","15","","","23","","","31","",""}
 	};
 	
 	static JComboBox<String> Mylistmodel1_1 = new JComboBox<>(new Mylistmodel());
-	static class Mylistmodel extends AbstractListModel<String> implements ComboBoxModel<String>{		
-		private static final long serialVersionUID = 1L;
+	static class Mylistmodel extends AbstractListModel<String> implements ComboBoxModel<String>{
 		String selecteditem=null;
 		private String[] test={"直接映射","两路组相联","四路组相联"};
 		public String getElementAt(int index){
@@ -145,7 +148,7 @@ public class Snoop {
 			for(int i=0;i<=3;i++)
 				for(int j=1;j<=2;j++)
 					Cache_Content[i][j]=" ";
-			for(int i=0;i<=9;i++)
+			for(int i=0;i<8;i++)
 				for(int j=1;j<=2;j++)
 					Mem_Content[i][j]=" ";
 			setVisible(false);
@@ -369,7 +372,7 @@ public class Snoop {
 		panel3.setBounds(350, 100, 350, 200);
 		panel4.setBounds(700, 100, 350, 200);
 		panel5.setBounds(1050, 100, 350, 200);
-		scrollPane2.setBounds(200,350,1000,180);
+		scrollPane2.setBounds(200,350,1000,155);
 		scrollPane2.setFont(new Font("",1,15));
 		//scrollPane2.setBounds(100, 250, 310, 180);
 		

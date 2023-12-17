@@ -3,14 +3,14 @@ import java.util.Set;
 
 // 定义缓存行的状态
 enum CacheLineState {
-    INVALID, // 失效
-    SHARED,  // 共享
-    EXCLUSIVE // 独占
+    INVALID,   // 失效
+    SHARED,    // 共享
+    EXCLUSIVE  // 独占
 }
 
 // 定义主存类
 class MainMemory {
-    private String[] data;
+    private final String[] data;
 
     public MainMemory(int size) {
         data = new String[size];
@@ -30,77 +30,91 @@ class MainMemory {
 
 // 定义处理器类
 class Processor {
-    private int id;
-    private CacheLineState[] cacheStates; // 每个缓存行的状态
-    private String[] cacheData; // 每个缓存行的数据
-    private int[] cacheAddress; // 用于存储每个缓存行中的主存地址
-    private MainMemory mainMemory;
+    private final String id;
+    private final CacheLineState[] cacheStates; // 每个缓存行的状态
+    private final String[] cacheData;           // 每个缓存行的数据
+    private final int[] cacheAddress;           // 用于存储每个缓存行中的主存地址
+    private final MainMemory mainMemory;
 
-    public Processor(int id, MainMemory mainMemory) {
+    public Processor(String id, MainMemory mainMemory) {
         this.id = id;
         this.cacheStates = new CacheLineState[4]; // 每个处理器有4个缓存行
-        this.cacheData = new String[4]; // 数据缓存
+        this.cacheData = new String[4];            // 数据缓存
         this.cacheAddress = new int[4];
         for (int i = 0; i < 4; i++) {
             cacheStates[i] = CacheLineState.INVALID;
             cacheData[i] = "";
-            cacheAddress[i]=32;
+            cacheAddress[i] = 32;
         }
         this.mainMemory = mainMemory;
     }
 
     public String readData(int address) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-//        switch (cacheStates[cacheIndex]) {
-//            case INVALID:
-//                System.out.println("处理器 " + id + " 从主存 " + address +" 读取数据");
-//                cacheData[cacheIndex] = mainMemory.readData(address);
-//                cacheStates[cacheIndex] = CacheLineState.SHARED;
-//                cacheAddress[cacheIndex] = address;
-//                break;
-//            case SHARED:
-//                System.out.println("Processor " + id + " reads data from its cache: " + cacheData[cacheIndex]);
-//                break;
-//            case EXCLUSIVE:
-//                System.out.println("Processor " + id + " reads data from its exclusive cache: " + cacheData[cacheIndex]);
-//                break;
-//        }
+        if (checkCache(address)) {
+            System.out.println("处理器:" + id + " 读:" + address + "  cache命中");
+        } else {
+            System.out.println("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
+            checkOtherProcessorsCache(address);
+            updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
+        }
         return cacheData[cacheIndex];
     }
 
     public void writeData(int address, String newData) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-//        switch (cacheStates[cacheIndex]) {
-//            case INVALID:
-//                System.out.println("Processor " + id + " initiates write request for address " + address);
-//                mainMemory.writeData(address, newData);
-//                cacheData[cacheIndex] = newData;
-//                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
-//                break;
-//            case SHARED:
-//                System.out.println("Processor " + id + " initiates write request for address " + address);
-//                mainMemory.writeData(address, newData);
-//                cacheData[cacheIndex] = newData;
-//                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
-//                break;
-//            case EXCLUSIVE:
-//                System.out.println("Processor " + id + " writes data to its exclusive cache: " + newData);
-//                cacheData[cacheIndex] = newData;
-//                break;
-//        }
+        if (checkCache(address)) {
+            System.out.println("处理器:" + id + " 写:" + address + " cache命中");
+            checkOtherProcessorsCache(address);
+            updateCache(address, newData, CacheLineState.EXCLUSIVE);
+        } else {
+            System.out.println("处理器:" + id + " 写:" + address + " cache未命中");
+            checkOtherProcessorsCache(address);
+            updateCache(address, newData, CacheLineState.EXCLUSIVE);
+        }
+    }
+
+    private void checkOtherProcessorsCache(int address) {
+        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        for (Processor p : MultiProcessor.processors) {
+            if (!this.equals(p)) {
+                if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
+                    p.writeBack(address);
+                    p.updateCache(address, cacheData[cacheIndex], CacheLineState.SHARED);
+                    return;
+                }
+                if (p.cacheStates[cacheIndex] == CacheLineState.SHARED) {
+                    p.updateCache(address, "", CacheLineState.INVALID);
+                }
+            }
+        }
+    }
+
+    private void writeBack(int address) {
+        int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
+        System.out.println("处理器:" + id + " 写回主存:" + address);
+        mainMemory.writeData(address, cacheData[cacheIndex]);
     }
 
     public void updateCache(int address, String newData, CacheLineState newState) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-        System.out.println("Processor " + id + " updates cache in response to write for address " + address + ": " + newData);
+        if (newState == CacheLineState.INVALID) {
+            System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
+            cacheData[cacheIndex] = "";
+            cacheStates[cacheIndex] = CacheLineState.INVALID;
+            cacheAddress[cacheIndex] = 32;
+            return;
+        }
+        System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
         cacheData[cacheIndex] = newData;
         cacheStates[cacheIndex] = newState;
+        cacheAddress[cacheIndex] = address;
     }
-    public void checkCache(int address){
+
+    public boolean checkCache(int address) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-        if(cacheAddress[cacheIndex] == address){
-            //todo
-        }
+        // 处理缓存命中的逻辑
+        return cacheAddress[cacheIndex] == address;
     }
 }
 
@@ -112,24 +126,20 @@ public class MultiProcessor {
     static Processor p4;
     static Set<Processor> processors = new HashSet<>();
 
-    static void checkOtherProcessors(Processor mp,int address){
-        for(Processor p : processors){
-            if(!mp.equals(p)){
-                p.checkCache(address);
-            }
-        }
-    }
-    public static void main(String[] args) {
+    static {
         mainMemory = new MainMemory(32);
-        p1 = new Processor(1, mainMemory);
-        p2 = new Processor(2, mainMemory);
-        p3 = new Processor(3, mainMemory);
-        p4 = new Processor(4, mainMemory);
+        p1 = new Processor("A", mainMemory);
+        p2 = new Processor("B", mainMemory);
+        p3 = new Processor("C", mainMemory);
+        p4 = new Processor("D", mainMemory);
         processors.add(p1);
         processors.add(p2);
-        processors.add(p2);
         processors.add(p3);
+        processors.add(p4);
+    }
 
+    public static void main(String[] args) {
+        // 示例操作序列
         p1.readData(0);
         p2.writeData(0, "New Data from Processor 2");
         p1.readData(0);
