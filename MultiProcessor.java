@@ -12,6 +12,9 @@ class MainMemory {
 
     public MainMemory(int size) {
         data = new String[size];
+        for (int i = 0; i < 32; i++) {
+            data[i] = String.valueOf(i);
+        }
     }
 
     public String readData(int address) {
@@ -28,64 +31,68 @@ class Processor {
     private int id;
     private CacheLineState[] cacheStates; // 每个缓存行的状态
     private String[] cacheData; // 每个缓存行的数据
+    private int[] cacheAddress; // 用于存储每个缓存行中的主存地址
     private MainMemory mainMemory;
 
     public Processor(int id, MainMemory mainMemory) {
         this.id = id;
         this.cacheStates = new CacheLineState[4]; // 每个处理器有4个缓存行
         this.cacheData = new String[4]; // 数据缓存
+        this.cacheAddress = new int[4];
         for (int i = 0; i < 4; i++) {
             cacheStates[i] = CacheLineState.INVALID;
             cacheData[i] = "";
+            cacheAddress[i]=32;
         }
         this.mainMemory = mainMemory;
     }
 
     public String readData(int address) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-        switch (cacheStates[cacheIndex]) {
-            case INVALID:
-                System.out.println("Processor " + id + " initiates read request for address " + address);
-                cacheData[cacheIndex] = mainMemory.readData(address);
-                cacheStates[cacheIndex] = CacheLineState.SHARED;
-                break;
-            case SHARED:
-                System.out.println("Processor " + id + " reads data from its cache: " + cacheData[cacheIndex]);
-                break;
-            case EXCLUSIVE:
-                System.out.println("Processor " + id + " reads data from its exclusive cache: " + cacheData[cacheIndex]);
-                break;
-            case MODIFIED:
-                System.out.println("Processor " + id + " reads data from its modified cache: " + cacheData[cacheIndex]);
-                break;
-        }
+//        switch (cacheStates[cacheIndex]) {
+//            case INVALID:
+//                System.out.println("处理器 " + id + " 从主存 " + address +" 读取数据");
+//                cacheData[cacheIndex] = mainMemory.readData(address);
+//                cacheStates[cacheIndex] = CacheLineState.SHARED;
+//                cacheAddress[cacheIndex] = address;
+//                break;
+//            case SHARED:
+//                System.out.println("Processor " + id + " reads data from its cache: " + cacheData[cacheIndex]);
+//                break;
+//            case EXCLUSIVE:
+//                System.out.println("Processor " + id + " reads data from its exclusive cache: " + cacheData[cacheIndex]);
+//                break;
+//            case MODIFIED:
+//                System.out.println("Processor " + id + " reads data from its modified cache: " + cacheData[cacheIndex]);
+//                break;
+//        }
         return cacheData[cacheIndex];
     }
 
     public void writeData(int address, String newData) {
         int cacheIndex = address % 4; // 使用取余操作确定缓存行索引
-        switch (cacheStates[cacheIndex]) {
-            case INVALID:
-                System.out.println("Processor " + id + " initiates write request for address " + address);
-                mainMemory.writeData(address, newData);
-                cacheData[cacheIndex] = newData;
-                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
-                break;
-            case SHARED:
-                System.out.println("Processor " + id + " initiates write request for address " + address);
-                mainMemory.writeData(address, newData);
-                cacheData[cacheIndex] = newData;
-                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
-                break;
-            case EXCLUSIVE:
-                System.out.println("Processor " + id + " writes data to its exclusive cache: " + newData);
-                cacheData[cacheIndex] = newData;
-                break;
-            case MODIFIED:
-                System.out.println("Processor " + id + " writes data to its modified cache: " + newData);
-                cacheData[cacheIndex] = newData;
-                break;
-        }
+//        switch (cacheStates[cacheIndex]) {
+//            case INVALID:
+//                System.out.println("Processor " + id + " initiates write request for address " + address);
+//                mainMemory.writeData(address, newData);
+//                cacheData[cacheIndex] = newData;
+//                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
+//                break;
+//            case SHARED:
+//                System.out.println("Processor " + id + " initiates write request for address " + address);
+//                mainMemory.writeData(address, newData);
+//                cacheData[cacheIndex] = newData;
+//                cacheStates[cacheIndex] = CacheLineState.EXCLUSIVE;
+//                break;
+//            case EXCLUSIVE:
+//                System.out.println("Processor " + id + " writes data to its exclusive cache: " + newData);
+//                cacheData[cacheIndex] = newData;
+//                break;
+//            case MODIFIED:
+//                System.out.println("Processor " + id + " writes data to its modified cache: " + newData);
+//                cacheData[cacheIndex] = newData;
+//                break;
+//        }
     }
 
     public void updateCache(int address, String newData, CacheLineState newState) {
