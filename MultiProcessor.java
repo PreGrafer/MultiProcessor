@@ -25,6 +25,12 @@ class MainMemory {
         }
     }
 
+    public void clean() {
+        for (int i = 0; i < size; i++) {
+            data[i] = String.valueOf(i);
+        }
+    }
+
     public String readData(int address) {
         return data[address];
     }
@@ -51,7 +57,15 @@ class Processor {
         this.mainMemory = mainMemory;
         for (int i = 0; i < Processor.cacheNum; i++) {
             cacheStates[i] = CacheLineState.INVALID;
-            cacheData[i] = String.valueOf(i);
+            cacheData[i] = "";
+            cacheAddress[i] = mainMemory.size;
+        }
+    }
+
+    public void clean() {
+        for (int i = 0; i < Processor.cacheNum; i++) {
+            cacheStates[i] = CacheLineState.INVALID;
+            cacheData[i] = "";
             cacheAddress[i] = mainMemory.size;
         }
     }
@@ -66,14 +80,6 @@ class Processor {
 
     public String getCacheData(int index) {
         return cacheData[index];
-    }
-
-    public int[] getCacheAddress() {
-        return cacheAddress;
-    }
-
-    public MainMemory getMainMemory() {
-        return mainMemory;
     }
 
     public String readData(int address) {
@@ -271,17 +277,10 @@ public class MultiProcessor extends JFrame {
     }
 
     private void init() {
-        mainMemory = new MainMemory(32);
-        p1 = new Processor("A", mainMemory);
-        p2 = new Processor("B", mainMemory);
-        p3 = new Processor("C", mainMemory);
-        p4 = new Processor("D", mainMemory);
-        processors.clear();
-        processors.add(p1);
-        processors.add(p2);
-        processors.add(p3);
-        processors.add(p4);
-        processorSize = processors.size();
+        mainMemory.clean();
+        for (Processor p : processors) {
+            p.clean();
+        }
 
         // 设置 CPU 部分的相关组件
         for (int i = 0; i < processorSize; i++) {
