@@ -95,6 +95,8 @@ class Processor {
             checkCacheStatus(address, "r");
             updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
         }
+        System.out.println("处理器:" + id + " 得到结果:" + cacheData[cacheIndex]);
+        messages.add("处理器:" + id + " 得到结果:" + cacheData[cacheIndex]);
         return cacheData[cacheIndex];
     }
 
@@ -115,8 +117,8 @@ class Processor {
     private void checkCacheStatus(int address, String fun) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         for (Processor p : MultiProcessor.processors) {
-            if (!this.equals(p)) {
-                if (p.cacheAddress[cacheIndex] == address && p.cacheStates[cacheIndex] == CacheLineState.SHARED && fun.equals("w")) {
+            if (!this.equals(p) && p.checkHit(address)) {
+                if (p.cacheStates[cacheIndex] == CacheLineState.SHARED && fun.equals("w")) {
                     p.updateCache(address, "", CacheLineState.INVALID);
                 }
                 if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
@@ -132,20 +134,6 @@ class Processor {
             }
         }
     }
-
-//    private void notHitCacheFunction(int address, String fun) {
-//        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
-//        for (Processor p : MultiProcessor.processors) {
-//            if (p.cacheStates[cacheIndex] == CacheLineState.SHARED && fun.equals("w")) {
-//                p.updateCache(address, "", CacheLineState.INVALID);
-//            }
-//            if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
-//                p.writeBack(p.cacheAddress[cacheIndex]);
-//                p.updateCache(p.cacheAddress[cacheIndex], p.cacheData[cacheIndex], CacheLineState.SHARED);
-//                return;
-//            }
-//        }
-//    }
 
     private void writeBack(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
@@ -299,12 +287,11 @@ public class MultiProcessor extends JFrame {
     }
 
     public static void main(String[] args) {
-        new MultiProcessor().setVisible(true);
-//        SwingUtilities.invokeLater(new Runnable() {
-//            public void run() {
-//                new MultiProcessor().setVisible(true);
-//            }
-//        });
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                new MultiProcessor().setVisible(true);
+            }
+        });
     }
 
     private Integer[] generateNumbers(int start, int end) {
