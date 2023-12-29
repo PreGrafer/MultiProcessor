@@ -44,7 +44,7 @@ class MainMemory {
 // 定义处理器类
 class Processor {
     public final static int cacheNum = 4;
-    public static List<String> messages = new ArrayList<>();
+    public static Vector<String> messages = new Vector<>();
     private final String id;
     private final CacheLineState[] cacheStates; // 每个缓存行的状态
     private final String[] cacheData;           // 每个缓存行的数据
@@ -86,47 +86,66 @@ class Processor {
 
     public String readData(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
-        if (checkCache(address)) {
+        if (checkHit(address)) {
             System.out.println("处理器:" + id + " 读:" + address + "  cache命中");
             messages.add("处理器:" + id + " 读:" + address + "  cache命中");
         } else {
             System.out.println("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
             messages.add("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
-            checkOtherProcessorsCache(address, "r");
+            checkCacheStatus(address, "r");
             updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
         }
         return cacheData[cacheIndex];
     }
 
     public void writeData(int address, String newData) {
-        if (checkCache(address)) {
+        if (checkHit(address)) {
             System.out.println("处理器:" + id + " 写:" + address + " cache命中");
             messages.add("处理器:" + id + " 写:" + address + " cache命中");
-            checkOtherProcessorsCache(address, "w");
+            checkCacheStatus(address, "w");
             updateCache(address, newData, CacheLineState.EXCLUSIVE);
         } else {
             System.out.println("处理器:" + id + " 写:" + address + " cache未命中");
             messages.add("处理器:" + id + " 写:" + address + " cache未命中");
-            checkOtherProcessorsCache(address, "w");
+            checkCacheStatus(address, "w");
             updateCache(address, newData, CacheLineState.EXCLUSIVE);
         }
     }
 
-    private void checkOtherProcessorsCache(int address, String fun) {
+    private void checkCacheStatus(int address, String fun) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         for (Processor p : MultiProcessor.processors) {
             if (!this.equals(p)) {
+                if (p.cacheAddress[cacheIndex] == address && p.cacheStates[cacheIndex] == CacheLineState.SHARED && fun.equals("w")) {
+                    p.updateCache(address, "", CacheLineState.INVALID);
+                }
                 if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
                     p.writeBack(address);
                     p.updateCache(address, p.getCacheData(cacheIndex), CacheLineState.SHARED);
                     return;
                 }
-                if ((p.cacheStates[cacheIndex] == CacheLineState.SHARED) && fun.equals("w")) {
-                    p.updateCache(address, "", CacheLineState.INVALID);
+            } else {
+                if (cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
+                    writeBack(cacheAddress[cacheIndex]);
+                    updateCache(cacheAddress[cacheIndex], cacheData[cacheIndex], CacheLineState.SHARED);
                 }
             }
         }
     }
+
+//    private void notHitCacheFunction(int address, String fun) {
+//        int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
+//        for (Processor p : MultiProcessor.processors) {
+//            if (p.cacheStates[cacheIndex] == CacheLineState.SHARED && fun.equals("w")) {
+//                p.updateCache(address, "", CacheLineState.INVALID);
+//            }
+//            if (p.cacheStates[cacheIndex] == CacheLineState.EXCLUSIVE) {
+//                p.writeBack(p.cacheAddress[cacheIndex]);
+//                p.updateCache(p.cacheAddress[cacheIndex], p.cacheData[cacheIndex], CacheLineState.SHARED);
+//                return;
+//            }
+//        }
+//    }
 
     private void writeBack(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
@@ -152,7 +171,7 @@ class Processor {
         cacheAddress[cacheIndex] = address;
     }
 
-    public boolean checkCache(int address) {
+    public boolean checkHit(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         // 处理缓存命中的逻辑
         return cacheAddress[cacheIndex] == address;
@@ -280,11 +299,12 @@ public class MultiProcessor extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new MultiProcessor().setVisible(true);
-            }
-        });
+        new MultiProcessor().setVisible(true);
+//        SwingUtilities.invokeLater(new Runnable() {
+//            public void run() {
+//                new MultiProcessor().setVisible(true);
+//            }
+//        });
     }
 
     private Integer[] generateNumbers(int start, int end) {
@@ -335,7 +355,7 @@ public class MultiProcessor extends JFrame {
             memoryLabels[i].setText("Block " + i + ": " + mainMemory.readData(i));
         }
 
-        messageList.setListData(Processor.messages.toArray(new String[0]));
+        messageList.setListData(Processor.messages);
 
         revalidate();
         repaint();
