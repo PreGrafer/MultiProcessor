@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 // 定义缓存行的状态
 enum CacheLineState {
@@ -43,6 +44,7 @@ class MainMemory {
 // 定义处理器类
 class Processor {
     public final static int cacheNum = 4;
+    public static List<String> messages = new ArrayList<>();
     private final String id;
     private final CacheLineState[] cacheStates; // 每个缓存行的状态
     private final String[] cacheData;           // 每个缓存行的数据
@@ -86,8 +88,10 @@ class Processor {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (checkCache(address)) {
             System.out.println("处理器:" + id + " 读:" + address + "  cache命中");
+            messages.add("处理器:" + id + " 读:" + address + "  cache命中");
         } else {
             System.out.println("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
+            messages.add("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
             checkOtherProcessorsCache(address, "r");
             updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
         }
@@ -97,10 +101,12 @@ class Processor {
     public void writeData(int address, String newData) {
         if (checkCache(address)) {
             System.out.println("处理器:" + id + " 写:" + address + " cache命中");
+            messages.add("处理器:" + id + " 写:" + address + " cache命中");
             checkOtherProcessorsCache(address, "w");
             updateCache(address, newData, CacheLineState.EXCLUSIVE);
         } else {
             System.out.println("处理器:" + id + " 写:" + address + " cache未命中");
+            messages.add("处理器:" + id + " 写:" + address + " cache未命中");
             checkOtherProcessorsCache(address, "w");
             updateCache(address, newData, CacheLineState.EXCLUSIVE);
         }
@@ -125,6 +131,7 @@ class Processor {
     private void writeBack(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         System.out.println("处理器:" + id + " 写回主存:" + address);
+        messages.add("处理器:" + id + " 写回主存:" + address);
         mainMemory.writeData(address, cacheData[cacheIndex]);
     }
 
@@ -132,12 +139,14 @@ class Processor {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (newState == CacheLineState.INVALID) {
             System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
+            messages.add("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
             cacheData[cacheIndex] = "";
             cacheStates[cacheIndex] = CacheLineState.INVALID;
             cacheAddress[cacheIndex] = mainMemory.size;
             return;
         }
         System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
+        messages.add("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
         cacheData[cacheIndex] = newData;
         cacheStates[cacheIndex] = newState;
         cacheAddress[cacheIndex] = address;
@@ -163,6 +172,7 @@ public class MultiProcessor extends JFrame {
     JLabel[] memoryLabels;
     JComboBox<Integer>[] addressBoxes;
     JComboBox<String>[] operationComboBoxes;
+    JList<String> messageList;
 
     public MultiProcessor() {
         mainMemory = new MainMemory(32);
@@ -197,9 +207,11 @@ public class MultiProcessor extends JFrame {
             memoryLabels[i] = new JLabel("Block " + i + ": " + mainMemory.readData(i));
         }
         setTitle("多Cache一致性模拟器--监听法");
-        setSize(800, 600);
+        setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        JPanel functionPanel = new JPanel();
+        functionPanel.setLayout(new BorderLayout());
 
         // Reset button
         JButton resetButton = new JButton("复位");
@@ -208,7 +220,7 @@ public class MultiProcessor extends JFrame {
                 init();
             }
         });
-        add(resetButton, BorderLayout.NORTH);
+        functionPanel.add(resetButton, BorderLayout.NORTH);
 
         // CPUs
         JPanel[] cpuPanels = new JPanel[processorSize];
@@ -241,14 +253,15 @@ public class MultiProcessor extends JFrame {
             });
             cpuPanels[i].add(startButtons[i]);
             JPanel cachePanel = new JPanel();
-            cachePanel.setLayout(new BoxLayout(cachePanel, BoxLayout.Y_AXIS));
+            cachePanel.setBorder(BorderFactory.createTitledBorder("Caches"));
+            cachePanel.setLayout(new GridLayout(4, 1));
             for (int j = 0; j < 4; j++) {
                 cachePanel.add(cacheLabels[i][j]);
             }
             cpuPanels[i].add(cachePanel);
             cpuContainer.add(cpuPanels[i]);
         }
-        add(cpuContainer, BorderLayout.CENTER);
+        functionPanel.add(cpuContainer, BorderLayout.CENTER);
 
         // Memory
         JPanel memoryPanel = new JPanel();
@@ -257,7 +270,13 @@ public class MultiProcessor extends JFrame {
         for (int i = 0; i < 32; i++) {
             memoryPanel.add(memoryLabels[i]);
         }
-        add(memoryPanel, BorderLayout.SOUTH);
+        functionPanel.add(memoryPanel, BorderLayout.SOUTH);
+        add(functionPanel);
+
+        messageList = new JList<>();
+        JScrollPane scrollPane = new JScrollPane(messageList);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("操作记录"));
+        add(scrollPane, BorderLayout.EAST);
     }
 
     public static void main(String[] args) {
@@ -281,6 +300,7 @@ public class MultiProcessor extends JFrame {
         for (Processor p : processors) {
             p.clean();
         }
+        Processor.messages.clear();
 
         // 设置 CPU 部分的相关组件
         for (int i = 0; i < processorSize; i++) {
@@ -296,6 +316,9 @@ public class MultiProcessor extends JFrame {
         for (int i = 0; i < 32; i++) {
             memoryLabels[i].setText("Block " + i + ": " + mainMemory.readData(i));
         }
+
+        messageList.setListData(new Vector<>());
+
         revalidate();
         repaint();
     }
@@ -311,6 +334,9 @@ public class MultiProcessor extends JFrame {
         for (int i = 0; i < 32; i++) {
             memoryLabels[i].setText("Block " + i + ": " + mainMemory.readData(i));
         }
+
+        messageList.setListData(Processor.messages.toArray(new String[0]));
+
         revalidate();
         repaint();
     }
