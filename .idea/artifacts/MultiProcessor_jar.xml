@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="MultiProcessor:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/MultiProcessor_jar</output-path>
+    <root id="archive" name="MultiProcessor.jar">
+      <element id="module-output" name="MultiProcessor" />
+      <element id="dir-copy" path="$PROJECT_DIR$/out" />
+    </root>
+  </artifact>
+</component>

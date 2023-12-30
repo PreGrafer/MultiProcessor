@@ -87,31 +87,29 @@ class Processor {
     public String readData(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (checkHit(address)) {
-            System.out.println("处理器:" + id + " 读:" + address + "  cache命中");
-            messages.add("处理器:" + id + " 读:" + address + "  cache命中");
+            System.out.println("CPU:" + id + " 读:" + address + "  cache命中");
+            messages.add("CPU:" + id + " 读:" + address + "  cache命中");
         } else {
-            System.out.println("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
-            messages.add("处理器:" + id + " 读:" + address + "  cache未命中 读主存...");
+            System.out.println("CPU:" + id + " 读:" + address + "  cache未命中 读主存...");
+            messages.add("CPU:" + id + " 读:" + address + "  cache未命中 读主存...");
             checkCacheStatus(address, "r");
             updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
         }
-        System.out.println("处理器:" + id + " 得到结果:" + cacheData[cacheIndex]);
-        messages.add("处理器:" + id + " 得到结果:" + cacheData[cacheIndex]);
+        System.out.println("CPU:" + id + " 得到结果:" + cacheData[cacheIndex]);
+        messages.add("CPU:" + id + " 得到结果:" + cacheData[cacheIndex]);
         return cacheData[cacheIndex];
     }
 
     public void writeData(int address, String newData) {
         if (checkHit(address)) {
-            System.out.println("处理器:" + id + " 写:" + address + " cache命中");
-            messages.add("处理器:" + id + " 写:" + address + " cache命中");
-            checkCacheStatus(address, "w");
-            updateCache(address, newData, CacheLineState.EXCLUSIVE);
+            System.out.println("CPU:" + id + " 写:" + address + " cache命中");
+            messages.add("CPU:" + id + " 写:" + address + " cache命中");
         } else {
-            System.out.println("处理器:" + id + " 写:" + address + " cache未命中");
-            messages.add("处理器:" + id + " 写:" + address + " cache未命中");
-            checkCacheStatus(address, "w");
-            updateCache(address, newData, CacheLineState.EXCLUSIVE);
+            System.out.println("CPU:" + id + " 写:" + address + " cache未命中");
+            messages.add("CPU:" + id + " 写:" + address + " cache未命中");
         }
+        checkCacheStatus(address, "w");
+        updateCache(address, newData, CacheLineState.EXCLUSIVE);
     }
 
     private void checkCacheStatus(int address, String fun) {
@@ -137,23 +135,23 @@ class Processor {
 
     private void writeBack(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
-        System.out.println("处理器:" + id + " 写回主存:" + address);
-        messages.add("处理器:" + id + " 写回主存:" + address);
+        System.out.println("CPU:" + id + " 写回主存:" + address);
+        messages.add("CPU:" + id + " 写回主存:" + address);
         mainMemory.writeData(address, cacheData[cacheIndex]);
     }
 
     public void updateCache(int address, String newData, CacheLineState newState) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (newState == CacheLineState.INVALID) {
-            System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
-            messages.add("处理器:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
+            System.out.println("CPU:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
+            messages.add("CPU:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
             cacheData[cacheIndex] = "";
             cacheStates[cacheIndex] = CacheLineState.INVALID;
             cacheAddress[cacheIndex] = mainMemory.size;
             return;
         }
-        System.out.println("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
-        messages.add("处理器:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
+        System.out.println("CPU:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
+        messages.add("CPU:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
         cacheData[cacheIndex] = newData;
         cacheStates[cacheIndex] = newState;
         cacheAddress[cacheIndex] = address;
@@ -204,14 +202,14 @@ public class MultiProcessor extends JFrame {
             addressBoxes[i] = new JComboBox<>(new DefaultComboBoxModel<>(generateNumbers(0, 31)));
             operationComboBoxes[i] = new JComboBox<>(new String[]{"Read", "Write"});
             for (int j = 0; j < 4; j++) {
-                cacheLabels[i][j] = new JLabel("Cache " + j + ": " + p.getCacheData(j) + " " + p.getCacheStates(j));
+                cacheLabels[i][j] = new JLabel("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
             }
         }
 
         // 重新设置内存部分的相关组件
         memoryLabels = new JLabel[32];
         for (int i = 0; i < 32; i++) {
-            memoryLabels[i] = new JLabel("Block " + i + ": " + mainMemory.readData(i));
+            memoryLabels[i] = new JLabel("Block " + i + " 数据: " + mainMemory.readData(i));
         }
         setTitle("多Cache一致性模拟器--监听法");
         setSize(1000, 700);
@@ -287,11 +285,7 @@ public class MultiProcessor extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new MultiProcessor().setVisible(true);
-            }
-        });
+        SwingUtilities.invokeLater(() -> new MultiProcessor().setVisible(true));
     }
 
     private Integer[] generateNumbers(int start, int end) {
@@ -315,13 +309,13 @@ public class MultiProcessor extends JFrame {
             dataFields[i].setText("");
             operationComboBoxes[i].setSelectedIndex(0);
             for (int j = 0; j < 4; j++) {
-                cacheLabels[i][j].setText("Cache " + j + ": " + p.getCacheData(j) + " " + p.getCacheStates(j));
+                cacheLabels[i][j].setText("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
             }
         }
 
         // 重新设置内存部分的相关组件
         for (int i = 0; i < 32; i++) {
-            memoryLabels[i].setText("Block " + i + ": " + mainMemory.readData(i));
+            memoryLabels[i].setText("Block " + i + " 数据: " + mainMemory.readData(i));
         }
 
         messageList.setListData(new Vector<>());
@@ -334,12 +328,12 @@ public class MultiProcessor extends JFrame {
         for (int i = 0; i < processorSize; i++) {
             Processor p = processors.get(i);
             for (int j = 0; j < 4; j++) {
-                cacheLabels[i][j].setText("Cache " + j + ": " + p.getCacheData(j) + " " + p.getCacheStates(j));
+                cacheLabels[i][j].setText("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
             }
         }
 
         for (int i = 0; i < 32; i++) {
-            memoryLabels[i].setText("Block " + i + ": " + mainMemory.readData(i));
+            memoryLabels[i].setText("Block " + i + " 数据: " + mainMemory.readData(i));
         }
 
         messageList.setListData(Processor.messages);
