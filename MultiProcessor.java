@@ -2,6 +2,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
@@ -64,6 +67,11 @@ class Processor {
         }
     }
 
+    public static void addMessage(String string) {
+        System.out.println(string);
+        Processor.messages.add(string);
+    }
+
     public void clean() {
         for (int i = 0; i < Processor.cacheNum; i++) {
             cacheStates[i] = CacheLineState.INVALID;
@@ -87,29 +95,26 @@ class Processor {
     public String readData(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (checkHit(address)) {
-            System.out.println("CPU:" + id + " 读:" + address + "  cache命中");
-            messages.add("CPU:" + id + " 读:" + address + "  cache命中");
+            addMessage("CPU:" + id + " 读:" + address + "  cache命中");
         } else {
-            System.out.println("CPU:" + id + " 读:" + address + "  cache未命中 读主存...");
-            messages.add("CPU:" + id + " 读:" + address + "  cache未命中 读主存...");
+            addMessage("CPU:" + id + " 读:" + address + "  cache未命中 读主存...");
             checkCacheStatus(address, "r");
             updateCache(address, mainMemory.readData(address), CacheLineState.SHARED);
         }
-        System.out.println("CPU:" + id + " 得到结果:" + cacheData[cacheIndex]);
-        messages.add("CPU:" + id + " 得到结果:" + cacheData[cacheIndex]);
+        addMessage("CPU:" + id + " 得到结果:" + cacheData[cacheIndex]);
+        addMessage("---------------==========+==========---------------");
         return cacheData[cacheIndex];
     }
 
     public void writeData(int address, String newData) {
         if (checkHit(address)) {
-            System.out.println("CPU:" + id + " 写:" + address + " cache命中");
-            messages.add("CPU:" + id + " 写:" + address + " cache命中");
+            addMessage("CPU:" + id + " 写:" + address + " cache命中");
         } else {
-            System.out.println("CPU:" + id + " 写:" + address + " cache未命中");
-            messages.add("CPU:" + id + " 写:" + address + " cache未命中");
+            addMessage("CPU:" + id + " 写:" + address + " cache未命中");
         }
         checkCacheStatus(address, "w");
         updateCache(address, newData, CacheLineState.EXCLUSIVE);
+        addMessage("---------------==========+==========---------------");
     }
 
     private void checkCacheStatus(int address, String fun) {
@@ -135,23 +140,20 @@ class Processor {
 
     private void writeBack(int address) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
-        System.out.println("CPU:" + id + " 写回主存:" + address);
-        messages.add("CPU:" + id + " 写回主存:" + address);
+        addMessage("CPU:" + id + " 写回主存:" + address);
         mainMemory.writeData(address, cacheData[cacheIndex]);
     }
 
     public void updateCache(int address, String newData, CacheLineState newState) {
         int cacheIndex = address % cacheNum; // 使用取余操作确定缓存行索引
         if (newState == CacheLineState.INVALID) {
-            System.out.println("CPU:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
-            messages.add("CPU:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
+            addMessage("CPU:" + id + " Cache:" + cacheIndex + " 作废" + " 状态: " + newState);
             cacheData[cacheIndex] = "";
             cacheStates[cacheIndex] = CacheLineState.INVALID;
             cacheAddress[cacheIndex] = mainMemory.size;
             return;
         }
-        System.out.println("CPU:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
-        messages.add("CPU:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
+        addMessage("CPU:" + id + " Cache:" + cacheIndex + " 更新主存地址:" + address + " 状态: " + newState);
         cacheData[cacheIndex] = newData;
         cacheStates[cacheIndex] = newState;
         cacheAddress[cacheIndex] = address;
@@ -218,14 +220,38 @@ public class MultiProcessor extends JFrame {
         JPanel functionPanel = new JPanel();
         functionPanel.setLayout(new BorderLayout());
 
-        // Reset button
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BorderLayout());
+
         JButton resetButton = new JButton("复位");
         resetButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 init();
             }
         });
-        functionPanel.add(resetButton, BorderLayout.NORTH);
+
+        JButton doButton = new JButton("执行指令文件");
+        doButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String filePath = "Commands.txt";
+
+                try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        processLine(line);
+                    }
+                } catch (IOException ex) {
+                    Processor.addMessage("无指令文件");
+                    Processor.addMessage("---------------==========+==========---------------");
+                }
+                update();
+            }
+        });
+
+        buttonPanel.add(resetButton, BorderLayout.NORTH);
+        buttonPanel.add(doButton, BorderLayout.SOUTH);
+
+        functionPanel.add(buttonPanel, BorderLayout.NORTH);
 
         // CPUs
         JPanel[] cpuPanels = new JPanel[processorSize];
@@ -284,8 +310,53 @@ public class MultiProcessor extends JFrame {
         add(scrollPane, BorderLayout.EAST);
     }
 
+    private static void processLine(String line) {
+        char firstChar = line.charAt(0);
+        String[] parts = line.split(" ", 4);
+
+        switch (firstChar) {
+            case 'r':
+                if (parts.length > 2) {
+                    String id = parts[1];
+                    int address = Integer.parseInt(parts[2]);
+                    try {
+                        getProcessorById(id).readData(address);
+                    } catch (NullPointerException ex) {
+                        Processor.addMessage("错误的处理器ID");
+                        Processor.addMessage("---------------==========+==========---------------");
+                    }
+                }
+                break;
+            case 'w':
+                if (parts.length > 3) {
+                    String id = parts[1];
+                    int address = Integer.parseInt(parts[2]);
+                    String data = parts[3];
+                    try {
+                        getProcessorById(id).writeData(address, data);
+                    } catch (NullPointerException ex) {
+                        Processor.addMessage("错误的处理器ID");
+                        Processor.addMessage("---------------==========+==========---------------");
+                    }
+                }
+                break;
+            default:
+                Processor.addMessage("错误的指令: " + line + "(r/w 处理器ID 地址 [数据])");
+                Processor.addMessage("---------------==========+==========---------------");
+        }
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new MultiProcessor().setVisible(true));
+    }
+
+    private static Processor getProcessorById(String id) {
+        for (Processor p : processors) {
+            if (p.getId().equalsIgnoreCase(id)) {
+                return p;
+            }
+        }
+        return null;
     }
 
     private Integer[] generateNumbers(int start, int end) {
