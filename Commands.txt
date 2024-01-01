@@ -1,6 +1,8 @@
 r a 5
 r b 5
+r e 1
 r c 5
+错误的指令测试
 w b 5 b write the block 5
 r d 5
 w b 21 b write the block 21
