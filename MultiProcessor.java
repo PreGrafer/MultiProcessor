@@ -205,6 +205,17 @@ public class MultiProcessor extends JFrame {
             operationComboBoxes[i] = new JComboBox<>(new String[]{"Read", "Write"});
             for (int j = 0; j < 4; j++) {
                 cacheLabels[i][j] = new JLabel("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
+                switch (p.getCacheStates(j)) {
+                    case INVALID:
+                        cacheLabels[i][j].setForeground(Color.GRAY);
+                        break;
+                    case SHARED:
+                        cacheLabels[i][j].setForeground(Color.BLUE);
+                        break;
+                    case EXCLUSIVE:
+                        cacheLabels[i][j].setForeground(Color.RED);
+                        break;
+                }
             }
         }
 
@@ -381,6 +392,17 @@ public class MultiProcessor extends JFrame {
             operationComboBoxes[i].setSelectedIndex(0);
             for (int j = 0; j < 4; j++) {
                 cacheLabels[i][j].setText("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
+                switch (p.getCacheStates(j)) {
+                    case INVALID:
+                        cacheLabels[i][j].setForeground(Color.GRAY);
+                        break;
+                    case SHARED:
+                        cacheLabels[i][j].setForeground(Color.BLUE);
+                        break;
+                    case EXCLUSIVE:
+                        cacheLabels[i][j].setForeground(Color.RED);
+                        break;
+                }
             }
         }
 
@@ -400,6 +422,17 @@ public class MultiProcessor extends JFrame {
             Processor p = processors.get(i);
             for (int j = 0; j < 4; j++) {
                 cacheLabels[i][j].setText("Cache " + j + " 数据: " + p.getCacheData(j) + " 状态: " + p.getCacheStates(j));
+                switch (p.getCacheStates(j)) {
+                    case INVALID:
+                        cacheLabels[i][j].setForeground(Color.GRAY);
+                        break;
+                    case SHARED:
+                        cacheLabels[i][j].setForeground(Color.BLUE);
+                        break;
+                    case EXCLUSIVE:
+                        cacheLabels[i][j].setForeground(Color.RED);
+                        break;
+                }
             }
         }
 
